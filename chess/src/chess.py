@@ -27,8 +27,6 @@ class ChessStub:
         self._turn = 0
         self._captured_pieces = {"W": [], "B": []}
 
-        self._board.set_up(clear=False)
-
     @property
     def turn(self) -> int:
         """
