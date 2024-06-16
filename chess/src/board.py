@@ -35,7 +35,7 @@ class Piece:
     """
     _color: Color
     _ptype: PieceType
-    _position: Position
+    # _position: Position
 
     def __init__(self, color: Color, ptype: PieceType) -> None:
         """
@@ -52,21 +52,21 @@ class Piece:
     def ptype(self) -> PieceType:
         return self._ptype
     
-    @property
-    def position(self) -> Position:
-        return self._position
+    # @property
+    # def position(self) -> Position:
+    #     return self._position
     
-    def set_position(self, pos: Position) -> None:
-        """
-        Updates the piece's position property
-        """
-        if is_valid_position(pos):
-            self._position = pos
-        else:
-            raise ValueError("Can't set piece to invalid position")
+    # def set_position(self, pos: Position) -> None:
+    #     """
+    #     Updates the piece's position property
+    #     """
+    #     if is_valid_position(pos):
+    #         self._position = pos
+    #     else:
+    #         raise ValueError("Can't set piece to invalid position")
     
-    ### Move types ###
-
+    ### Move types ###                
+    
     def white_pawn_moves(self) -> list[Position]:
         """
         Returns the relative positions that a white pawn could move to from 0,0
@@ -201,12 +201,12 @@ class Board:
         """
         r, f = pos
         if not self.is_valid_position(pos):
-            raise ValueError("Invalid position")
+            raise ValueError("Board Error: Invalid position")
 
-        if self.get_piece(pos) is None:
+        if self.is_empty(pos):
             self._board[r][f] = piece
         else:
-            raise ValueError("Position already occupied")
+            raise ValueError("Board Error: Position already occupied")
 
     def remove_piece(self, pos: Position) -> Optional[Piece]:
         """
@@ -215,7 +215,7 @@ class Board:
         """
         r, f = pos
         if not self.is_valid_position(pos):
-            raise ValueError("Invalid position")
+            raise ValueError("Board Error: Invalid position")
 
         removed_piece = self._board[r][f]
         self._board[r][f] = None
@@ -230,9 +230,20 @@ class Board:
         """
         r, f = pos
         if not self.is_valid_position(pos):
-            raise ValueError("Invalid position")
+            raise ValueError("Board Error: Invalid position")
 
         return self._board[r][f]
+
+    def is_empty(self, pos: Position) -> bool:
+        """
+        Returns whether the position is empty
+        Raises ValueError if position is invalid
+        """
+        r, f = pos
+        if not self.is_valid_position(pos):
+            raise ValueError("Board Error: Invalid position")
+
+        return self._board[r][f] is None
 
     def move_piece(self, pos1: Position, pos2: Position) -> None:
         """
@@ -242,10 +253,10 @@ class Board:
         positions are the same
         Raises ValueError if position is invalid (within called methods)
         """
-        if self.get_piece(pos1) is None or self.get_piece(pos2) is not None:
-            raise ValueError("Invalid move")
+        if self.is_empty(pos1) or self.is_empty(pos2):
+            raise ValueError("Board Error: Invalid move")
         if pos1 == pos2:
-            raise ValueError("Can't move to same square")
+            raise ValueError("Board Error: Can't move to same square")
 
         moved_piece = self.remove_piece(pos1)
         self.add_piece(moved_piece, pos2)
@@ -259,10 +270,10 @@ class Board:
         the same
         Raises ValueError if position is invalid (within called methods)
         """
-        if self.get_piece(pos1) is None or self.get_piece(pos2) is None:
-            raise ValueError("Invalid Move")
+        if self.is_empty(pos1) or self.is_empty(pos2):
+            raise ValueError("Board Error: Invalid Capture")
         if pos1 == pos2:
-            raise ValueError("Can't capture on same square")
+            raise ValueError("Board Error: Can't capture on same square")
 
         captured_piece = self.remove_piece(pos2)
         self.move_piece(pos1, pos2)
@@ -271,36 +282,36 @@ class Board:
     
     ### Movement Methods ###
 
-    def moveset(self, pos: Position) -> set[Position]:
-        """
-        Returns the set of positions that the piece at the given position could
-        move to
+    # def moveset(self, pos: Position) -> set[Position]:
+    #     """
+    #     Returns the set of positions that the piece at the given position could
+    #     move to
         
-        Raises ValueError if the starting position is invalid (within called
-        methods)
-        """
-        r, f = pos
-        piece = self.get_piece(pos)
+    #     Raises ValueError if the starting position is invalid (within called
+    #     methods)
+    #     """
+    #     r, f = pos
+    #     piece = self.get_piece(pos)
 
-        result = set()
+    #     result = set()
 
-        if piece is None:
-            return result
+    #     if piece is None:
+    #         return result
 
-        assert isinstance(piece, PieceType)
+    #     assert isinstance(piece, PieceType)
 
-        if piece.ptype == PieceType.P:
-            pass
-        if piece.ptype == PieceType.N:
-            pass
-        if piece.ptype == PieceType.B:
-            pass
-        if piece.ptype == PieceType.R:
-            pass
-        if piece.ptype == PieceType.Q:
-            pass
-        if piece.ptype == PieceType.K:
-            pass
+    #     if piece.ptype == PieceType.P:
+    #         pass
+    #     if piece.ptype == PieceType.N:
+    #         pass
+    #     if piece.ptype == PieceType.B:
+    #         pass
+    #     if piece.ptype == PieceType.R:
+    #         pass
+    #     if piece.ptype == PieceType.Q:
+    #         pass
+    #     if piece.ptype == PieceType.K:
+    #         pass
 
     ### Setup/Clear ###
         
