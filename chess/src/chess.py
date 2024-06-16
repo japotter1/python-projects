@@ -28,11 +28,25 @@ class ChessStub:
         self._captured_pieces = {"W": [], "B": []}
 
     @property
+    def board(self) -> Board:
+        """
+        Returns the value of the _board attribute
+        """
+        return self._board
+
+    @property
     def turn(self) -> int:
         """
         Returns the current turn as an int (0 for white, 1 for black)
         """
         return self._turn
+    
+    @property
+    def game_over(self) -> bool:
+        """
+        Returns bool for whether the game is over or not
+        """
+        return False
 
     def restart(self) -> None:
         """

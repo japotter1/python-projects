@@ -35,6 +35,7 @@ class Piece:
     """
     _color: Color
     _ptype: PieceType
+    _position: Position
 
     def __init__(self, color: Color, ptype: PieceType) -> None:
         """
@@ -50,6 +51,19 @@ class Piece:
     @property
     def ptype(self) -> PieceType:
         return self._ptype
+    
+    @property
+    def position(self) -> Position:
+        return self._position
+    
+    def set_position(self, pos: Position) -> None:
+        """
+        Updates the piece's position property
+        """
+        if is_valid_position(pos):
+            self._position = pos
+        else:
+            raise ValueError("Can't set piece to invalid position")
     
     ### Move types ###
 
@@ -112,6 +126,41 @@ class Piece:
 
     def __str__(self) -> str:
         return f"{self.color.name}{self.ptype.name}"
+    
+### String converters ###
+
+def str_to_pos(pos: str) -> Position:
+    """
+    Converts the name of a square (eg. A1) to position tuple (eg. (0,7))
+    Raises ValueError if position is invalid
+    """
+    rank: int = 8 - int(pos[1])
+    file: int = ord(pos[0]) - 65
+
+    if not is_valid_position((rank, file)):
+        raise ValueError("Invalid position")
+
+    return rank, file
+    
+def str_to_piece(piece: str) -> Piece:
+    """
+    Converts the name of a piece (eg. BK) to Piece object (a black king)
+    Raises ValueError if piece name is invalid
+    """
+    try:
+        color: Color = Color[piece[0]]
+        ptype: PieceType = PieceType[piece[1]]
+    except KeyError:
+        raise ValueError("Invalid piece color or type")
+
+    return Piece(color, ptype)
+
+def is_valid_position(pos: Position) -> bool:
+    """
+    Determines if the position is valid
+    """
+    r, f = pos
+    return 0 <= r <= 7 and 0 <= f <= 7
 
 
 class Board:
@@ -141,34 +190,6 @@ class Board:
         """
         r, f = pos
         return 0 <= r <= 7 and 0 <= f <= 7
-
-    ### String converters ###
-
-    def str_to_pos(self, pos: str) -> Position:
-        """
-        Converts the name of a square (eg. A1) to position tuple (eg. (0,7))
-        Raises ValueError if position is invalid
-        """
-        rank: int = 8 - int(pos[1])
-        file: int = ord(pos[0]) - 65
-
-        if not self.is_valid_position((rank, file)):
-            raise ValueError("Invalid position")
-
-        return rank, file
-        
-    def str_to_piece(self, piece: str) -> Piece:
-        """
-        Converts the name of a piece (eg. BK) to Piece object (a black king)
-        Raises ValueError if piece name is invalid
-        """
-        try:
-            color: Color = Color[piece[0]]
-            ptype: PieceType = PieceType[piece[1]]
-        except KeyError:
-            raise ValueError("Invalid piece color or type")
-
-        return Piece(color, ptype)
 
     ### Modify board ###
 
@@ -307,9 +328,9 @@ class Board:
         """
         String representation of board for debugging
         """
-        result = ""
-        for r in self._board:
-            result += "\n"
+        result = "  A  B  C  D  E  F  G  H "
+        for i, r in enumerate(self._board):
+            result += f"\n{8-i}"
             for piece in r:
                 if piece is None:
                     result += " --"
