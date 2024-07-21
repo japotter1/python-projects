@@ -3,23 +3,61 @@ Text user interface for chess game
 """
 
 import sys
+from typing import Optional
 from chess import ChessStub
-from board import str_to_piece, str_to_pos, is_valid_position
+from board import Position
 
 game = ChessStub()
 game.restart()
 
+def print_board(game: ChessStub, list_legal_pos: Optional[Position] = None) -> None:
+    """
+    Prints the game board
+    """
+    legal_marks = []
+    if list_legal_pos is not None:
+        legal_marks.extend(game.list_legal_moves(list_legal_pos))
+
+    result = "   a   b   c   d   e   f   g   h  "
+    for i in range(8):
+        result += f"\n{8-i} "
+        for j in range(8):
+            piece = game.board.get_piece((i,j))
+            if (i,j) in legal_marks:
+                if piece is None:
+                    result += "[--]"
+                else:
+                    result += "[" + str(piece) + "]"
+            else:
+                if piece is None:
+                    result += " -- "
+                else:
+                    result += " " + str(piece) + " "
+    
+    print(f"\n{result}")
+
+mark = None
+
 while not game.game_over:
-    print(game.board)
+    print_board(game, mark)
+    mark = None
     print("White to move") if game.turn == 0 else print("Black to move")
-    move = input("Please enter a move: ")
+
+    move = input("\nPlease enter a move: ")
 
     if move == "exit":
         exit()
 
     try:
-        game.board.move_piece(str_to_pos(move[0:2]), str_to_pos(move[2:4]))
-    except ValueError:
-        print("Invalid move")
-
-    game.next_turn()
+        if move.find("list ") == 0:
+            print("\nLegal moves list:")
+            legal_moves = game.list_legal_moves(game.str_to_pos(move[5:7]))
+            for r, f in legal_moves:
+                print(f"{chr(f+97)}{8-r}")
+        elif move.find("mark ") == 0:
+            mark = game.str_to_pos(move[5:7])
+        else:
+            game.board.move_piece(game.str_to_pos(move[0:2]), game.str_to_pos(move[2:4]))
+            game.next_turn()
+    except Exception as error:
+        print(f"\nInvalid move: {error}")

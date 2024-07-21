@@ -51,116 +51,9 @@ class Piece:
     @property
     def ptype(self) -> PieceType:
         return self._ptype
-    
-    # @property
-    # def position(self) -> Position:
-    #     return self._position
-    
-    # def set_position(self, pos: Position) -> None:
-    #     """
-    #     Updates the piece's position property
-    #     """
-    #     if is_valid_position(pos):
-    #         self._position = pos
-    #     else:
-    #         raise ValueError("Can't set piece to invalid position")
-    
-    ### Move types ###                
-    
-    def white_pawn_moves(self) -> list[Position]:
-        """
-        Returns the relative positions that a white pawn could move to from 0,0
-        """
-        result = []
-        result.append((-1, 0))
-        result.append((-2, 0))
-        return result
-
-    def white_pawn_captures(self) -> list[Position]:
-        """
-        Returns the relative positions that a white pawn could capture
-        """
-        result = []
-        result.append((-1, -1))
-        result.append((-1, 1))
-        return result
-    
-    def black_pawn_moves(self) -> list[Position]:
-        """
-        Returns the relative positions that a black pawn could move to from 0,0
-        """
-        result = []
-        result.append((1, 0))
-        result.append((2, 0))
-        return result
-
-    def black_pawn_captures(self) -> list[Position]:
-        """
-        Returns the relative positions that a black pawn could capture
-        """
-        result = []
-        result.append((1, -1))
-        result.append((1, 1))
-        return result
-    
-    def knight_moves(self) -> list[Position]:
-        """
-        Returns the relative positions that a knight could move to/capture
-        """
-        result = []
-        for i in [-2, -1, 1, 2]:
-            result.append((i, 3-abs(i)))
-            result.append((i, -(3-abs(i))))
-        return result
-    
-    def king_moves(self) -> list[Position]:
-        """
-        Returns the relative positions that a knight could move to/capture
-        """
-        result = []
-        for i in range(-1,2):
-            for j in range(-1,2):
-                # if not i == 0 and j == 0:
-                    result.append((i,j))
-        return result
 
     def __str__(self) -> str:
         return f"{self.color.name}{self.ptype.name}"
-    
-### String converters ###
-
-def str_to_pos(pos: str) -> Position:
-    """
-    Converts the name of a square (eg. A1) to position tuple (eg. (0,7))
-    Raises ValueError if position is invalid
-    """
-    rank: int = 8 - int(pos[1])
-    file: int = ord(pos[0]) - 65
-
-    if not is_valid_position((rank, file)):
-        raise ValueError("Invalid position")
-
-    return rank, file
-    
-def str_to_piece(piece: str) -> Piece:
-    """
-    Converts the name of a piece (eg. BK) to Piece object (a black king)
-    Raises ValueError if piece name is invalid
-    """
-    try:
-        color: Color = Color[piece[0]]
-        ptype: PieceType = PieceType[piece[1]]
-    except KeyError:
-        raise ValueError("Invalid piece color or type")
-
-    return Piece(color, ptype)
-
-def is_valid_position(pos: Position) -> bool:
-    """
-    Determines if the position is valid
-    """
-    r, f = pos
-    return 0 <= r <= 7 and 0 <= f <= 7
 
 
 class Board:
@@ -211,6 +104,7 @@ class Board:
     def remove_piece(self, pos: Position) -> Optional[Piece]:
         """
         Removes the piece from the given position and returns its value
+        Returns None if the position is empty
         Raises ValueError if position is invalid
         """
         r, f = pos
@@ -226,6 +120,7 @@ class Board:
         """
         Returns the value of the piece at the given position but does not
         remove it
+        Returns None if the position is empty
         Raises ValueError if position is invalid
         """
         r, f = pos
@@ -245,75 +140,43 @@ class Board:
 
         return self._board[r][f] is None
 
-    def move_piece(self, pos1: Position, pos2: Position) -> None:
+    def move_piece(self, pos1: Position, pos2: Position) -> Optional[Piece]:
         """
         Removes the piece from the first position and adds it to the second
-
-        Raises ValueError if pos1 is empty or if pos2 is not empty or both
-        positions are the same
-        Raises ValueError if position is invalid (within called methods)
+        If a piece was on the second, returns it
+        Raises ValueError if both positions are the same or either position is
+        invalid. Raises ValueError if original position is empty
         """
-        if self.is_empty(pos1) or self.is_empty(pos2):
-            raise ValueError("Board Error: Invalid move")
         if pos1 == pos2:
             raise ValueError("Board Error: Can't move to same square")
 
         moved_piece = self.remove_piece(pos1)
-        self.add_piece(moved_piece, pos2)
-
-    def capture_piece(self, pos1: Position, pos2: Position) -> Piece:
-        """
-        Removes the piece from the second position and moves the piece from
-        the first position to the second. Returns the captured piece.
-
-        Raises ValueError if either position is empty or both positions are
-        the same
-        Raises ValueError if position is invalid (within called methods)
-        """
-        if self.is_empty(pos1) or self.is_empty(pos2):
-            raise ValueError("Board Error: Invalid Capture")
-        if pos1 == pos2:
-            raise ValueError("Board Error: Can't capture on same square")
+        if moved_piece is None:
+            raise ValueError("Board Error: Can't move from empty square")
 
         captured_piece = self.remove_piece(pos2)
-        self.move_piece(pos1, pos2)
+        self.add_piece(moved_piece, pos2)
 
         return captured_piece
-    
-    ### Movement Methods ###
 
-    # def moveset(self, pos: Position) -> set[Position]:
+    # def capture_piece(self, pos1: Position, pos2: Position) -> Piece:
     #     """
-    #     Returns the set of positions that the piece at the given position could
-    #     move to
-        
-    #     Raises ValueError if the starting position is invalid (within called
-    #     methods)
+    #     Removes the piece from the second position and moves the piece from
+    #     the first position to the second. Returns the captured piece.
+
+    #     Raises ValueError if either position is empty or both positions are
+    #     the same
+    #     Raises ValueError if position is invalid (within called methods)
     #     """
-    #     r, f = pos
-    #     piece = self.get_piece(pos)
+    #     if self.is_empty(pos1) or self.is_empty(pos2):
+    #         raise ValueError("Board Error: Invalid Capture")
+    #     if pos1 == pos2:
+    #         raise ValueError("Board Error: Can't capture on same square")
 
-    #     result = set()
+    #     captured_piece = self.remove_piece(pos2)
+    #     self.move_piece(pos1, pos2)
 
-    #     if piece is None:
-    #         return result
-
-    #     assert isinstance(piece, PieceType)
-
-    #     if piece.ptype == PieceType.P:
-    #         pass
-    #     if piece.ptype == PieceType.N:
-    #         pass
-    #     if piece.ptype == PieceType.B:
-    #         pass
-    #     if piece.ptype == PieceType.R:
-    #         pass
-    #     if piece.ptype == PieceType.Q:
-    #         pass
-    #     if piece.ptype == PieceType.K:
-    #         pass
-
-    ### Setup/Clear ###
+    #     return captured_piece
         
     def clear(self) -> None:
         """
@@ -337,9 +200,9 @@ class Board:
 
     def __str__(self) -> str:
         """
-        String representation of board for debugging
+        String representation of board for tui
         """
-        result = "  A  B  C  D  E  F  G  H "
+        result = "  a  b  c  d  e  f  g  h "
         for i, r in enumerate(self._board):
             result += f"\n{8-i}"
             for piece in r:

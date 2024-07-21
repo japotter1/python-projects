@@ -2,6 +2,7 @@
 Internal game logic of the chess game
 """
 
+import numpy
 import operator
 from typing import Optional
 from board import Position, Color, PieceType, Piece, Board
@@ -79,11 +80,15 @@ class ChessStub:
         
         piece = self.board.get_piece(pos)
 
-        if piece is None:
-            raise ValueError("Game Error: no piece to move from position")
-        
         r, f = pos
         result = []
+
+        if piece is None:
+            return result
+        
+        assert isinstance(piece, Piece)
+        if piece.color.value != self.turn:
+            return result
 
         # Pawn
         if piece.ptype == PieceType.P:
@@ -91,26 +96,35 @@ class ChessStub:
             start_rank = 6 if piece.color == Color.W else 1
 
             # Pawn moves
-            if 0 < r < 7 and self.board.is_empty((op(r, 1), f)):
-                result.append((op(r, 1), f))
-                if r == start_rank and self.board.is_empty((op(r, 2), f)):
-                    result.append((op(r, 2), f))
-            
+            single_move = (op(r, 1), f)
+            if self.board.is_valid_position(single_move) and\
+                self.board.is_empty(single_move):
+                result.append(single_move)
+                
+                double_move = (op(r, 2), f)
+                if r == start_rank and\
+                self.board.is_valid_position(double_move) and\
+                self.board.is_empty(double_move):
+                    result.append(double_move)
+
             # Pawn captures
-            if 0 < r < 7:
-                if f > 0 and not self.board.is_empty((op(r, 1), f-1)) and\
-                self.board.get_piece((op(r, 1), f-1)).color != piece.color:
-                    result.append((op(r, 1), f-1))
-                if f < 7 and not self.board.is_empty((op(r, 1), f+1)) and\
-                self.board.get_piece((op(r, 1), f+1)).color != piece.color:
-                    result.append((op(r, 1), f+1))
+            for i in [-1, 1]:
+                capture = (op(r, 1), f+i)
+                if self.board.is_valid_position(capture) and\
+                isinstance(self.board.get_piece(capture), Piece) and\
+                self.board.get_piece(capture).color != piece.color:
+                    result.append(capture)
 
         # Knight
         if piece.ptype == PieceType.N:
             for i, j in [(-2,-1), (-2,1), (-1,-2), (-1,2),
                          (1,-2), (1,2), (2,-1), (2,1)]:
-                if self.board.is_valid_position((r+i, f+j)):
-                    result.append((r+i, f+j))
+                move = ((r+i, f+j))
+                if self.board.is_valid_position(move):
+                    if isinstance(self.board.get_piece(move), Piece) and\
+                    self.board.get_piece(move).color == piece.color:
+                        continue
+                    result.append(move)
 
         # Bishop or queen
         if piece.ptype == PieceType.B or piece.ptype == PieceType.Q:
@@ -126,8 +140,12 @@ class ChessStub:
         if piece.ptype == PieceType.K:
             for i, j in [(-1,-1), (-1,0), (-1,1), (0,-1),
                          (0,1), (1,-1), (1,0), (1,1)]:
-                if self.board.is_valid_position((r+i, f+j)):
-                    result.append((r+i), (f+j))
+                move = ((r+i, f+j))
+                if self.board.is_valid_position(move):
+                    if isinstance(self.board.get_piece(move), Piece) and\
+                    self.board.get_piece(move).color == piece.color:
+                        continue
+                    result.append(move)
 
         return result
 
@@ -136,13 +154,50 @@ class ChessStub:
         Returns a list of all legal "long" moves (bishop/rook/queen) based on
         the given direction
         """
-        raise NotImplementedError
+        r, f = pos
+        i, j = direction
 
-    def _is_legal_move(self, pos1: Position, pos2: Position) -> bool:
+        if i == 0 and j == 0:
+            raise ValueError("Game Error: long move direction can't be (0,0)")
+
+        if isinstance(self.board.get_piece(pos), Piece):
+            color = self.board.get_piece(pos).color
+        else:
+            raise ValueError("Game Error: can't find long moves from empty position")
+
+        result = []
+
+        legal = True
+
+        while legal:
+            move = (r+i, f+j)
+            if self.board.is_valid_position(move):
+                if isinstance(self.board.get_piece(move), Piece):
+                    if self.board.get_piece(move).color == color:
+                        legal = False
+                    else:
+                        result.append(move)
+                        legal = False
+                else:
+                    result.append(move)
+                    i += numpy.sign(i)
+                    j += numpy.sign(j)
+            else:
+                legal = False
+
+        return result
+
+    # def _is_legal_move(self, pos1: Position, pos2: Position) -> bool:
+    #     """
+    #     Checks if the space exists, if it would cause check, etc
+    #     To only be used inside list_legal_moves (this does not check if the
+    #     piece can actually move there)
+    #     """
+    #     raise NotImplementedError
+    
+    def simulate_move(self, pos1: Position, pos2: Position) -> "ChessStub":
         """
-        Checks if the space exists, if it would cause check, etc
-        To only be used inside list_legal_moves (this does not check if the
-        piece can actually move there)
+        Simulates a move to determine it it's check
         """
         raise NotImplementedError
 
@@ -150,4 +205,52 @@ class ChessStub:
         """
         Plays a legal move
         """
+        raise NotImplementedError
+    
+    ### Notation ###
+
+    ### String converters ###
+
+    def str_to_pos(self, pos: str) -> Position:
+        """
+        Converts the name of a square (eg. A1) to position tuple (eg. (0,7))
+        Raises ValueError if position is invalid
+        """
+        r: int = 8 - int(pos[1])
+        f: int = ord(pos[0]) - 97
+
+        if not 0 <= r <= 7 or not 0 <= f <= 7:
+            raise ValueError("Invalid position")
+
+        return r, f
+
+    def str_to_piece(self, piece: str) -> Piece:
+        """
+        Converts the name of a piece (eg. BK) to Piece object (a black king)
+        Raises ValueError if piece name is invalid
+        """
+        try:
+            color: Color = Color[piece[0]]
+            ptype: PieceType = PieceType[piece[1]]
+        except KeyError:
+            raise ValueError("Invalid piece color or type")
+
+        return Piece(color, ptype)
+
+    def read_notation(self, notation: str) -> tuple[Position, Position]:
+        """
+        Reads a string of notation and returns the tuple of start and end
+        positions for the move
+
+        NOTE to self: go backwards - start with last two
+            if last two look like position, that's the end pos
+            otherwise keep going back until you find it
+
+            if there's nothing before those two it's a pawn move, check if legal
+
+            if there's a capital letter at the start that's the piece. Otherwise it's a pawn move
+                check if there's a piece of that type (of the current player's) that can legally move there
+                if multiple, check after first letter for disambiguators
+            if it starts with a lowercase letter, it's a pawn capture, check if legal
+            """
         raise NotImplementedError
