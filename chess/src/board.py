@@ -64,11 +64,7 @@ class Board:
         _board: matrix representation of the board, storing Piece objects
     """
     _board: list[list[Optional[Piece]]]
-
-    first_rank_setup: list[PieceType] = [PieceType.R, PieceType.N,
-                                         PieceType.B, PieceType.Q,
-                                         PieceType.K, PieceType.B,
-                                         PieceType.N, PieceType.R]
+    # _pieces_on_board: dict[Position: Piece]
 
     def __init__(self) -> None:
         """
@@ -76,6 +72,7 @@ class Board:
         Creates an 8x8 game board
         """
         self._board = [[None] * 8 for _ in range(8)]
+        self._pieces_on_board = {}
     
     def is_valid_position(self, pos: Position) -> bool:
         """
@@ -84,11 +81,19 @@ class Board:
         r, f = pos
         return 0 <= r <= 7 and 0 <= f <= 7
 
+    @property
+    def pieces_on_board(self) -> dict[Position, Piece]:
+        """
+        Returns the _pieces_on_board attribute
+        """
+        return self._pieces_on_board
+
     ### Modify board ###
 
     def add_piece(self, piece: Piece, pos: Position) -> None:
         """
-        Puts a piece in the given position if it is empty
+        Puts a piece in the given position if it is empty and adds that piece
+        to _pieces_on_board
         Raises ValueError if it is not empty
         Raises ValueError if position is invalid
         """
@@ -98,6 +103,7 @@ class Board:
 
         if self.is_empty(pos):
             self._board[r][f] = piece
+            self._pieces_on_board[pos] = piece
         else:
             raise ValueError("Board Error: Position already occupied")
 
@@ -111,10 +117,11 @@ class Board:
         if not self.is_valid_position(pos):
             raise ValueError("Board Error: Invalid position")
 
-        removed_piece = self._board[r][f]
-        self._board[r][f] = None
+        if self._board[r][f] is None:
+            return None
 
-        return removed_piece
+        self._board[r][f] = None
+        return self._pieces_on_board.pop(pos)
 
     def get_piece(self, pos: Position) -> Optional[Piece]:
         """
@@ -185,18 +192,6 @@ class Board:
         for i, rank in enumerate(self._board):
             for j, _ in enumerate(rank):
                 self._board[i][j] = None
-
-    def set_up(self) -> None:
-        """
-        Sets the board to the starting position
-        """
-        self.clear()
-
-        for i in range(8):
-            self.add_piece(Piece(Color.B, self.first_rank_setup[i]), (0, i))
-            self.add_piece(Piece(Color.B, PieceType.P), (1, i))
-            self.add_piece(Piece(Color.W, PieceType.P), (6, i))
-            self.add_piece(Piece(Color.W, self.first_rank_setup[i]), (7, i))
 
     def __str__(self) -> str:
         """

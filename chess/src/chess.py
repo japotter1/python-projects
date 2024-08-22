@@ -4,6 +4,7 @@ Internal game logic of the chess game
 
 import numpy
 import operator
+from copy import deepcopy
 from typing import Optional
 from board import Position, Color, PieceType, Piece, Board
 
@@ -22,6 +23,11 @@ class ChessStub:
 
     piece_values: dict[str, int] = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9,
                                     "K": 0}
+    
+    first_rank_setup: list[PieceType] = [PieceType.R, PieceType.N,
+                                         PieceType.B, PieceType.Q,
+                                         PieceType.K, PieceType.B,
+                                         PieceType.N, PieceType.R]
 
     def __init__(self) -> None:
         """
@@ -47,6 +53,21 @@ class ChessStub:
         return self._turn
     
     @property
+    def is_in_check(self) -> bool:
+        """
+        Returns whether the current player is in check or not
+        """
+        for pos, piece in self.board.pieces_on_board.items():
+            if piece.color.value != self.turn:
+                moves = self.list_legal_moves(pos, simulated=True)
+                for move in moves:
+                    target = self.board.get_piece(move)
+                    if target is not None and target.ptype == PieceType.K:
+                        return True
+
+        return False
+    
+    @property
     def game_over(self) -> bool:
         """
         Returns bool for whether the game is over or not
@@ -57,7 +78,14 @@ class ChessStub:
         """
         Restarts the game in the starting position, white to move
         """
-        self._board.set_up()
+        self.board.clear()
+
+        for i in range(8):
+            self.board.add_piece(Piece(Color.B, self.first_rank_setup[i]), (0, i))
+            self.board.add_piece(Piece(Color.B, PieceType.P), (1, i))
+            self.board.add_piece(Piece(Color.W, PieceType.P), (6, i))
+            self.board.add_piece(Piece(Color.W, self.first_rank_setup[i]), (7, i))
+
         self._turn = 0
         self._captured_pieces = {"W": [], "B": []}
 
@@ -70,10 +98,14 @@ class ChessStub:
         else:
             self._turn = 0
 
-    def list_legal_moves(self, pos: Position) -> list[Position]:
+    def list_legal_moves(self, pos: Position, simulated: bool = False) -> list[Position]:
         """
         Lists the squares that the piece at pos can legally move to (includes
         captures)
+
+        simulated (default false) is set to true when this function is used
+        within the _would_be_check method, as a check is still valid even if
+        "capturing the king" would put the opponent in check as well
         """
         if not self.board.is_valid_position(pos):
             raise ValueError("Game Error: invalid position")
@@ -87,7 +119,7 @@ class ChessStub:
             return result
         
         assert isinstance(piece, Piece)
-        if piece.color.value != self.turn:
+        if not simulated and piece.color.value != self.turn:
             return result
 
         # Pawn
@@ -116,7 +148,7 @@ class ChessStub:
                     result.append(capture)
 
         # Knight
-        if piece.ptype == PieceType.N:
+        elif piece.ptype == PieceType.N:
             for i, j in [(-2,-1), (-2,1), (-1,-2), (-1,2),
                          (1,-2), (1,2), (2,-1), (2,1)]:
                 move = ((r+i, f+j))
@@ -126,18 +158,24 @@ class ChessStub:
                         continue
                     result.append(move)
 
-        # Bishop or queen
-        if piece.ptype == PieceType.B or piece.ptype == PieceType.Q:
+        # Bishop
+        elif piece.ptype == PieceType.B:
             for direction in [(-1,-1), (-1,1), (1,-1), (1,1)]:
                 result.extend(self._long_moves(pos, direction))
 
-        # Rook or queen
-        if piece.ptype == PieceType.R or piece.ptype == PieceType.Q:
+        # Rook
+        elif piece.ptype == PieceType.R:
             for direction in [(-1,0), (0,-1), (0,1), (1,0)]:
                 result.extend(self._long_moves(pos, direction))
 
+        # Queen
+        elif piece.ptype == PieceType.Q:
+            for direction in [(-1,-1), (-1,1), (1,-1), (1,1),
+                              (-1,0), (0,-1), (0,1), (1,0)]:
+                result.extend(self._long_moves(pos, direction))
+
         # King
-        if piece.ptype == PieceType.K:
+        elif piece.ptype == PieceType.K:
             for i, j in [(-1,-1), (-1,0), (-1,1), (0,-1),
                          (0,1), (1,-1), (1,0), (1,1)]:
                 move = ((r+i, f+j))
@@ -147,7 +185,10 @@ class ChessStub:
                         continue
                     result.append(move)
 
-        return result
+        if simulated:
+            return result
+        
+        return [move for move in result if not self._would_be_check(pos, move)]
 
     def _long_moves(self, pos: Position, direction: Position) -> list[Position]:
         """
@@ -186,26 +227,23 @@ class ChessStub:
                 legal = False
 
         return result
-
-    # def _is_legal_move(self, pos1: Position, pos2: Position) -> bool:
-    #     """
-    #     Checks if the space exists, if it would cause check, etc
-    #     To only be used inside list_legal_moves (this does not check if the
-    #     piece can actually move there)
-    #     """
-    #     raise NotImplementedError
     
-    def simulate_move(self, pos1: Position, pos2: Position) -> "ChessStub":
+    def _would_be_check(self, pos1: Position, pos2: Position) -> bool:
         """
-        Simulates a move to determine it it's check
+        Simulates a move to determine it would put that player in check
         """
-        raise NotImplementedError
+        game_copy: ChessStub = deepcopy(self)
+        game_copy.play_move(pos1, pos2)
+        game_copy.next_turn()
+
+        return game_copy.is_in_check
 
     def play_move(self, pos1: Position, pos2: Position) -> None:
         """
-        Plays a legal move
+        Plays a move. Does not check for legality. Increments the turn counter.
         """
-        raise NotImplementedError
+        self.board.move_piece(pos1, pos2)
+        self.next_turn()
     
     ### Notation ###
 

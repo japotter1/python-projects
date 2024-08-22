@@ -42,6 +42,8 @@ while not game.game_over:
     print_board(game, mark)
     mark = None
     print("White to move") if game.turn == 0 else print("Black to move")
+    if game.is_in_check:
+        print("You are in check")
 
     move = input("\nPlease enter a move: ")
 
@@ -57,7 +59,6 @@ while not game.game_over:
         elif move.find("mark ") == 0:
             mark = game.str_to_pos(move[5:7])
         else:
-            game.board.move_piece(game.str_to_pos(move[0:2]), game.str_to_pos(move[2:4]))
-            game.next_turn()
+            game.play_move(game.str_to_pos(move[0:2]), game.str_to_pos(move[2:4]))
     except Exception as error:
         print(f"\nInvalid move: {error}")
